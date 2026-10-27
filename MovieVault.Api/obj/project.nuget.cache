@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "uQT1enfArWU=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Moham\\Desktop\\Softwareteknologi\\4. semester\\BAD\\Hand-in\\Assignment 3\\bad-movievault\\MovieVault.Api\\MovieVault.Api.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Moham\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.12\\microsoft.aspnetcore.openapi.10.0.12.nupkg.sha512",
+    "C:\\Users\\Moham\\.nuget\\packages\\microsoft.openapi\\2.12.0\\microsoft.openapi.2.12.0.nupkg.sha512"
+  ],
+  "logs": []
+}
