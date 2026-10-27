@@ -2,7 +2,7 @@ namespace MovieVault.Api.Entities;
 
 public class ProductionRecord
 {
-    public int Id { get; set; }
+    public int ProductionRecordId { get; set; }
     public decimal? Budget { get; set; }
     public DateOnly? ShootingStartDate { get; set; }
     public DateOnly? ShootingEndDate { get; set; }

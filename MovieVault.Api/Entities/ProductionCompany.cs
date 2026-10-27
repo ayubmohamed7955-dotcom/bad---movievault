@@ -2,7 +2,7 @@ namespace MovieVault.Api.Entities;
 
 public class ProductionCompany
 {
-    public int Id { get; set; }
+    public int ProductionCompanyId { get; set; }
     public string Name { get; set; } = string.Empty;
     public int? FoundingYear { get; set; }
     public string? Country { get; set; }

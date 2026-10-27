@@ -2,7 +2,7 @@ namespace MovieVault.Api.Entities;
 
 public class Director
 {
-    public int Id { get; set; }
+    public int DirectorId { get; set; }
     public string Name { get; set; } = string.Empty;
     public DateOnly? BirthDate { get; set; }
     public string? Nationality { get; set; }

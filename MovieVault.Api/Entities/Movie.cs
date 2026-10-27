@@ -3,7 +3,7 @@ namespace MovieVault.Api.Entities;
 public class Movie
 {
     // Primary key
-    public int Id { get; set; }
+    public int MovieId { get; set; }
     public string Title { get; set; } = string.Empty;
     public DateOnly? ReleaseDate { get; set; }
     public int? RunetimeMinutes { get; set; }
