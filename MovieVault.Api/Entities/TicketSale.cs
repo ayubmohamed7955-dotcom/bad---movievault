@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace MovieVault.Api.Models;
+namespace MovieVault.Api.Entities;
 
 public class TicketSale
 {

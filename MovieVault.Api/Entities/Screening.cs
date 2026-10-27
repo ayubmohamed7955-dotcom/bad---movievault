@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 
-namespace MovieVault.Api.Models;
+namespace MovieVault.Api.Entities;
 
 public class Screening
 {
