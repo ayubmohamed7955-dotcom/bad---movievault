@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using MovieVault.Api.Models;
+using MovieVault.Api.Entities;
 
 namespace MovieVault.Api.Data.Seed;
 
