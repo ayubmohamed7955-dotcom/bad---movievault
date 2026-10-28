@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 
 namespace MovieVault.Api.Entities;
@@ -17,7 +17,7 @@ public class Screening
 
     // FK: en screening skal referere til en film
     public int MovieId { get; set; }
-    // public Movie Movie { get; set; } = null!;   // aktiveres når Movie.cs findes
+    public Movie Movie { get; set; } = null!;
 
     // FK: en screening skal referere til en sal
     public int ScreenId { get; set; }

@@ -8,6 +8,6 @@ public class Location
     public string? Country { get; set; }
     public LocationType LocationType { get; set; }
     
-    // has: 1:N - én location kan have mange film
+    // filmed: N:N - én location kan bruges i mange film (via MovieLocation)
     public List<MovieLocation> Movies { get; set; } = new();
 }

@@ -6,7 +6,7 @@ public class Movie
     public int MovieId { get; set; }
     public string Title { get; set; } = string.Empty;
     public DateOnly? ReleaseDate { get; set; }
-    public int? RunetimeMinutes { get; set; }
+    public int? RuntimeMinutes { get; set; }
     public string? AgeRating { get; set; }
     public MovieStatus Status { get; set; } = MovieStatus.Planned;
 
@@ -18,8 +18,8 @@ public class Movie
     public int? ProductionCompanyId { get; set; }
     public ProductionCompany? ProductionCompany { get; set; }
 
-    // has: 1:1 - FK ligger på ProductionCompany
-    public ProductionCompany? ProductionCompany1 { get; set; }
+    // has: 1:1 - FK (MovieId) ligger på ProductionRecord
+    public ProductionRecord? ProductionRecord { get; set; }
     
     // N:N via junction-entities (features og filmed)
     public List<MovieActor> Cast { get; set; } = new();
