@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
+using MovieVault.Api.Data;
 using MovieVault.Api.Middleware;
 using Scalar.AspNetCore;
 using Serilog;
@@ -17,9 +19,9 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-// TODO (Mohamad): registrer DbContext her, fx
-// builder.Services.AddDbContext<MovieVaultDbContext>(options =>
-//     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// EF Core med SQL Server - connection string ligger i appsettings.json
+builder.Services.AddDbContext<MovieVaultDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
