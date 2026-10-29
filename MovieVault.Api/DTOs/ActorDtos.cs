@@ -3,40 +3,33 @@ using MovieVault.Api.Entities;
 
 namespace MovieVault.Api.DTOs;
 
-// Tilføj en skuespiller til en films cast, fx POST /api/movies/{movieId}/cast
-public class AddActorToMovieDto
+// GET /api/actors liste så man kan finde actorId i Scalar
+public class ActorDto
 {
-    [Range(1, int.MaxValue, ErrorMessage = "ActorId must be a valid id.")]
     public int ActorId { get; set; }
-
-    [Required(ErrorMessage = "CharacterName is required.")]
-    [MaxLength(100)]
-    public string CharacterName { get; set; } = string.Empty;
-
-    // "Lead", "Supporting" eller "Cameo"
-    [EnumDataType(typeof(RoleType))]
-    public RoleType RoleType { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Nationality { get; set; }
 }
 
 // Query 5: Actor movie performance
 public class ActorPerformanceDto
 {
-    public int ActorId { get; set; }
+   public int ActorId { get; set; }
     public string ActorName { get; set; } = string.Empty;
 
-    public List<ActorMoviePerformanceDto> Movies { get; set; } = new();
-
-    // Summer på tværs af alle filmene
+    // Beregnes ud fra Movies-listen
+    public int NumberOfMovies { get; set; }
     public int TotalTicketsSold { get; set; }
-    public decimal TotalRevenue { get; set; }
+
+    public List<ActorMoviePerformanceDto> Movies { get; set; } = new();
 }
 
+// En film, skuespilleren er med i, og hvor mange billetter den har solgt
 public class ActorMoviePerformanceDto
 {
     public int MovieId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string CharacterName { get; set; } = string.Empty;
-    public string RoleType { get; set; } = string.Empty;
+    public RoleType RoleType { get; set; }
     public int TicketsSold { get; set; }
-    public decimal Revenue { get; set; }
 }
