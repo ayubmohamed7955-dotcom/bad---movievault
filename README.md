@@ -8,21 +8,21 @@ MovieVault is an ASP.NET Core Web API (.NET 10) that manages a movie catalogue a
 
 | Name | Student number |
 |---|---|
-| Ayub Mohamed Yusuf | [STUDENT NUMBER] |
+| Ayub Mohamed Yusuf | au781514 |
 | Mohamad Saleh Yassine | au759451 |
-| Jewad Mahouk | [STUDENT NUMBER] |
-| Mohamed Abdirahman Hassan Mahamod | [STUDENT NUMBER] |
+| Jewad Mahouk | au764175 |
+| Mohamed Abdirahman Hassan Mahamod | au758453 |
 
 ## Contribution report
 
 | Part | Responsible | Contribution |
 |---|---|---|
-| A. Consolidated E/R diagram | [NAME] | [CONTRIBUTION] |
-| B. Database implementation with EF Core | [NAME] | [CONTRIBUTION] |
-| C. REST API endpoints | [NAME] | [CONTRIBUTION] |
-| D. Query endpoints | Mohamad Saleh Yassine | au759451 |
-| E. Logging to MongoDB | [NAME] | [CONTRIBUTION] |
-| F. OpenAPI + Scalar | [NAME] | [CONTRIBUTION] |
+| A. Consolidated E/R diagram | Jewad | Compared the individual diagrams and created the consolidated E/R diagram |
+| B. Database implementation with EF Core | Jewad, Mohamed | Jewad: entity classes, primary keys, foreign keys and relationships. Mohamed: DbContext configuration, migrations and seed data |
+| C. REST API endpoints | Mohamed | Movie CRUD, cast and filming location operations, screenings and ticket sales with validation |
+| D. Query endpoints | Mohamad | Movie overview, movie details, upcoming screenings, ticket sales by movie and actor performance |
+| E. Logging to MongoDB | Ayub | Serilog configuration, MongoDB sink and request logging middleware |
+| F. OpenAPI + Scalar | Ayub | OpenAPI document, Scalar UI and XML documentation of endpoints |
 
 Everyone in the group has reviewed the full solution and can explain all parts of it.
 
