@@ -1,4 +1,5 @@
 namespace MovieVault.Api.Entities;
+using MovieVault.Api.Auth;
 
 public class Actor
 {
@@ -8,4 +9,6 @@ public class Actor
     public string? Nationality { get; set; }
     public string? Gender { get; set; }
     public List<MovieActor> Roles { get; set; } = new();
+    public string? UserId { get; set; }
+    public ApiUser? User { get; set; }
 }

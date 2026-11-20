@@ -2,9 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using MovieVault.Api.Data.Seed;
 using MovieVault.Api.Entities;
 
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using MovieVault.Api.Auth;
+
 namespace MovieVault.Api.Data;
 
-public class MovieVaultDbContext : DbContext
+public class MovieVaultDbContext : IdentityDbContext<ApiUser>
 {
     public MovieVaultDbContext(DbContextOptions<MovieVaultDbContext> options) : base(options)
     {
@@ -70,12 +73,17 @@ public class MovieVaultDbContext : DbContext
         });
 
         // ---------- Director ----------
+// ---------- Director ----------
         modelBuilder.Entity<Director>(e =>
         {
             e.Property(d => d.Name).IsRequired().HasMaxLength(100);
             e.Property(d => d.Nationality).HasMaxLength(60);
-        });
 
+            e.HasOne(d => d.User)
+                .WithOne()
+                .HasForeignKey<Director>(d => d.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
         // ---------- ProductionCompany ----------
         modelBuilder.Entity<ProductionCompany>(e =>
         {
@@ -120,6 +128,11 @@ public class MovieVaultDbContext : DbContext
             e.Property(a => a.Name).IsRequired().HasMaxLength(100);
             e.Property(a => a.Nationality).HasMaxLength(60);
             e.Property(a => a.Gender).HasMaxLength(20);
+
+            e.HasOne(a => a.User)
+                .WithOne()
+                .HasForeignKey<Actor>(a => a.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ---------- MovieActor (features, N:N) ----------

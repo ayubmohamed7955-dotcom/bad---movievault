@@ -3,12 +3,15 @@ using Microsoft.EntityFrameworkCore;
 using MovieVault.Api.Data;
 using MovieVault.Api.DTOs;
 using MovieVault.Api.Entities;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace MovieVault.Api.Controllers;
 
 [ApiController]
 [Route("api/screenings")]
 [Produces("application/json")]
+[Authorize]
 public class ScreeningsController : ControllerBase
 {
     // Bruges hvis en film ikke har en runtime endnu, når vi tjekker om to screenings overlapper i samme sal
@@ -25,84 +28,249 @@ public class ScreeningsController : ControllerBase
     }
 
     /// <summary>Henter én screening.</summary>
-    [HttpGet("{id:int}", Name = nameof(GetScreening))]
-    [ProducesResponseType(typeof(ScreeningDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ScreeningDto>> GetScreening(int id)
-    {
-        var screening = await ScreeningsWithDetails().FirstOrDefaultAsync(s => s.ScreeningId == id);
-        if (screening is null)
-            return Problem(statusCode: 404, title: "Screening not found", detail: $"No screening with id {id}.");
 
+[HttpGet("{id:int}", Name = nameof(GetScreening))]
+[ProducesResponseType(typeof(ScreeningDto), StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+public async Task<ActionResult<ScreeningDto>> GetScreening(int id)
+{
+    // Find den ønskede screening
+    var screening = await ScreeningsWithDetails()
+        .FirstOrDefaultAsync(s => s.ScreeningId == id);
+
+    if (screening is null)
+    {
+        return Problem(
+            statusCode: 404,
+            title: "Screening not found",
+            detail: $"No screening with id {id}.");
+    }
+
+    // Find brugerens ID fra JWT
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    // Admin og Reviewer må se alle screenings
+    if (User.IsInRole("Admin") || User.IsInRole("Reviewer"))
+    {
         return Ok(ToDto(screening));
     }
 
-    /// <summary>Henter alle screenings for en film, sorteret efter tidspunkt.</summary>
-    [HttpGet("~/api/movies/{movieId:int}/screenings")]
-    [ProducesResponseType(typeof(IEnumerable<ScreeningDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IEnumerable<ScreeningDto>>> GetScreeningsForMovie(int movieId)
+    // Actor må kun se screenings for egne film
+    if (User.IsInRole("Actor"))
     {
-        if (!await _db.Movies.AnyAsync(m => m.MovieId == movieId))
-            return Problem(statusCode: 404, title: "Movie not found", detail: $"No movie with id {movieId}.");
+        var hasAccess = await _db.MovieActors.AnyAsync(ma =>
+            ma.MovieId == screening.MovieId &&
+            ma.Actor.UserId == userId);
 
-        var screenings = await ScreeningsWithDetails()
-            .Where(s => s.MovieId == movieId)
-            .OrderBy(s => s.StartTime)
-            .ToListAsync();
-
-        return Ok(screenings.Select(ToDto));
+        if (!hasAccess)
+            return Forbid();
     }
+    // Director må kun se screenings for egne film
+    else if (User.IsInRole("Director"))
+    {
+        var hasAccess = await _db.Movies.AnyAsync(m =>
+            m.MovieId == screening.MovieId &&
+            m.Director != null &&
+            m.Director.UserId == userId);
+
+        if (!hasAccess)
+            return Forbid();
+    }
+    else
+    {
+        return Forbid();
+    }
+
+    return Ok(ToDto(screening));
+}
+
+
+    /// <summary>Henter alle screenings for en film, sorteret efter tidspunkt.</summary>
+
+[HttpGet("~/api/movies/{movieId:int}/screenings")]
+[ProducesResponseType(
+    typeof(IEnumerable<ScreeningDto>),
+    StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+public async Task<ActionResult<IEnumerable<ScreeningDto>>>
+    GetScreeningsForMovie(int movieId)
+{
+    // Kontrollér først om filmen eksisterer
+    if (!await _db.Movies.AnyAsync(m => m.MovieId == movieId))
+    {
+        return Problem(
+            statusCode: 404,
+            title: "Movie not found",
+            detail: $"No movie with id {movieId}.");
+    }
+
+    // Find den indloggede brugers ID
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    // Admin og Reviewer må se alle film
+    if (User.IsInRole("Admin") || User.IsInRole("Reviewer"))
+    {
+        // Ingen begrænsning
+    }
+    else if (User.IsInRole("Actor"))
+    {
+        // Kontrollér om Actor medvirker i filmen
+        var hasAccess = await _db.MovieActors.AnyAsync(ma =>
+            ma.MovieId == movieId &&
+            ma.Actor.UserId == userId);
+
+        if (!hasAccess)
+            return Forbid();
+    }
+    else if (User.IsInRole("Director"))
+    {
+        // Kontrollér om Director har instrueret filmen
+        var hasAccess = await _db.Movies.AnyAsync(m =>
+            m.MovieId == movieId &&
+            m.Director != null &&
+            m.Director.UserId == userId);
+
+        if (!hasAccess)
+            return Forbid();
+    }
+    else
+    {
+        return Forbid();
+    }
+
+    // Hent forestillinger efter adgangskontrol
+    var screenings = await ScreeningsWithDetails()
+        .Where(s => s.MovieId == movieId)
+        .OrderBy(s => s.StartTime)
+        .ToListAsync();
+
+    return Ok(screenings.Select(ToDto));
+}
+
 
     /// <summary>Henter alle screenings i en biograf (på tværs af dens sale), sorteret efter tidspunkt.</summary>
-    [HttpGet("~/api/cinemas/{cinemaId:int}/screenings")]
-    [ProducesResponseType(typeof(IEnumerable<ScreeningDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IEnumerable<ScreeningDto>>> GetScreeningsForCinema(int cinemaId)
+[HttpGet("~/api/cinemas/{cinemaId:int}/screenings")]
+[ProducesResponseType(
+    typeof(IEnumerable<ScreeningDto>),
+    StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+public async Task<ActionResult<IEnumerable<ScreeningDto>>>
+    GetScreeningsForCinema(int cinemaId)
+{
+    // Kontrollér, at biografen eksisterer
+    if (!await _db.Cinemas.AnyAsync(
+        c => c.CinemaId == cinemaId))
     {
-        if (!await _db.Cinemas.AnyAsync(c => c.CinemaId == cinemaId))
-            return Problem(statusCode: 404, title: "Cinema not found", detail: $"No cinema with id {cinemaId}.");
-
-        var screenings = await ScreeningsWithDetails()
-            .Where(s => s.Screen.CinemaId == cinemaId)
-            .OrderBy(s => s.StartTime)
-            .ToListAsync();
-
-        return Ok(screenings.Select(ToDto));
+        return Problem(
+            statusCode: 404,
+            title: "Cinema not found",
+            detail: $"No cinema with id {cinemaId}.");
     }
 
-    /// <summary>
-    /// Query 3: Kommende screenings (ikke annullerede), sorteret kronologisk.
-    /// </summary>
-    [HttpGet("upcoming")]
-    [ProducesResponseType(typeof(IEnumerable<UpcomingScreeningDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<UpcomingScreeningDto>>> GetUpcomingScreenings()
+    // Find den indloggede bruger
+    var userId = User.FindFirstValue(
+        ClaimTypes.NameIdentifier);
+
+    // Start med alle screenings i biografen
+    var query = ScreeningsWithDetails()
+        .Where(s => s.Screen.CinemaId == cinemaId);
+
+    // Admin må se alle screenings
+    if (User.IsInRole("Admin"))
     {
-        var now = DateTime.Now;
-
-        // JOIN: Screening -> Movie og Screening -> Screen -> Cinema (EF laver joins ud fra navigationerne)
-        var upcoming = await _db.Screenings
-            .Where(s => s.StartTime > now && s.Status == ScreeningStatus.Scheduled)
-            .OrderBy(s => s.StartTime)
-            .Select(s => new UpcomingScreeningDto
-            {
-                ScreeningId = s.ScreeningId,
-                MovieTitle = s.Movie.Title,
-                CinemaName = s.Screen.Cinema.Name,
-                City = s.Screen.Cinema.City,
-                ScreenNumber = s.Screen.ScreenNumber,
-                StartTime = s.StartTime,
-                TicketPrice = s.TicketPrice
-            })
-            .ToListAsync();
-
-        return Ok(upcoming);
+        // Ingen filtrering
     }
+    else if (User.IsInRole("Actor"))
+    {
+        // Kun screenings for film, Actor medvirker i
+        query = query.Where(s =>
+            s.Movie.Cast.Any(ma =>
+                ma.Actor.UserId == userId));
+    }
+    else if (User.IsInRole("Director"))
+    {
+        // Kun screenings for film, Director har instrueret
+        query = query.Where(s =>
+            s.Movie.Director != null &&
+            s.Movie.Director.UserId == userId);
+    }
+    else if (!User.IsInRole("Reviewer"))
+    {
+        return Forbid();
+    }
+
+    // Hent kun de tilladte screenings
+    var screenings = await query
+        .OrderBy(s => s.StartTime)
+        .ToListAsync();
+
+    return Ok(screenings.Select(ToDto));
+}
+
+
+ 
+[HttpGet("upcoming")]
+[ProducesResponseType(
+    typeof(IEnumerable<UpcomingScreeningDto>),
+    StatusCodes.Status200OK)]
+public async Task<ActionResult<IEnumerable<UpcomingScreeningDto>>>
+    GetUpcomingScreenings()
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var now = DateTime.Now;
+
+    // Start med alle kommende forestillinger
+    var query = _db.Screenings
+        .AsNoTracking()
+        .Where(s => s.StartTime > now &&
+                    s.Status == ScreeningStatus.Scheduled);
+
+    // Actor ser kun forestillinger for egne film
+    if (User.IsInRole("Admin"))
+    {
+        // Admin ser alle
+    }
+    else if (User.IsInRole("Actor"))
+    {
+        query = query.Where(s =>
+            s.Movie.Cast.Any(ma =>
+                ma.Actor.UserId == userId));
+    }
+    // Director ser kun forestillinger for egne film
+    else if (User.IsInRole("Director"))
+    {
+        query = query.Where(s =>
+            s.Movie.Director != null &&
+            s.Movie.Director.UserId == userId);
+    }
+    else if (!User.IsInRole("Reviewer"))
+    {
+        return Forbid();
+    }
+
+    var upcoming = await query
+        .OrderBy(s => s.StartTime)
+        .Select(s => new UpcomingScreeningDto
+        {
+            ScreeningId = s.ScreeningId,
+            MovieTitle = s.Movie.Title,
+            CinemaName = s.Screen.Cinema.Name,
+            City = s.Screen.Cinema.City,
+            ScreenNumber = s.Screen.ScreenNumber,
+            StartTime = s.StartTime,
+            TicketPrice = s.TicketPrice
+        })
+        .ToListAsync();
+
+    return Ok(upcoming);
+}
+
 
     /// <summary>Opretter en screening for en film i en sal.</summary>
     [HttpPost]
     [ProducesResponseType(typeof(ScreeningDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ScreeningDto>> CreateScreening(CreateScreeningDto dto)
     {
         var startTime = dto.StartTime!.Value; // [Required] på DTO'en sikrer at den ikke er null
@@ -152,6 +320,8 @@ public class ScreeningsController : ControllerBase
     [ProducesResponseType(typeof(ScreeningDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Roles = "Admin")]
+
     public async Task<ActionResult<ScreeningDto>> UpdateScreening(int id, UpdateScreeningDto dto)
     {
         var screening = await _db.Screenings
@@ -213,6 +383,7 @@ public class ScreeningsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteScreening(int id)
     {
         var screening = await _db.Screenings.FindAsync(id);

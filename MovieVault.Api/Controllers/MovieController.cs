@@ -3,11 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using MovieVault.Api.Data;
 using MovieVault.Api.DTOs;
 using MovieVault.Api.Entities;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace MovieVault.Api.Controllers;
 
 [ApiController]
 [Route("api/movies")]
+[Authorize]
 public class MoviesController : ControllerBase
 {
     private readonly MovieVaultDbContext _db;
@@ -18,43 +21,119 @@ public class MoviesController : ControllerBase
         _db = db;
     }
 
-    // GET api/movies - 1. Movie overview
-    [HttpGet]
-     public async Task<ActionResult<List<MovieOverviewDto>>> GetAll()
-    {
-        // Select bliver til LEFT JOINs mod Director, ProductionCompany
-        // og ProductionRecord i SQL. LEFT, fordi relationerne er optional.
-        var movies = await _db.Movies
-            .AsNoTracking()
-            .OrderBy(m => m.Title)
-            .Select(m => new MovieOverviewDto
-            {
-                MovieId = m.MovieId,
-                Title = m.Title,
-                ReleaseDate = m.ReleaseDate,
-                Status = m.Status,
-                DirectorName = m.Director != null ? m.Director.Name : null,
-                ProductionCompanyName = m.ProductionCompany != null ? m.ProductionCompany.Name : null,
-                Budget = m.ProductionRecord != null ? m.ProductionRecord.Budget : null
-            })
-            .ToListAsync();
 
-        return Ok(movies);
+[HttpGet]
+public async Task<ActionResult<List<MovieOverviewDto>>> GetAll()
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    // Start med en query over alle film
+    var query = _db.Movies.AsNoTracking().AsQueryable();
+
+    // Admin har altid adgang til alle film
+    if (User.IsInRole("Admin"))
+    {
+        // Ingen filtrering
+    }
+    else if (User.IsInRole("Actor"))
+    {
+        // Find kun film, hvor den indloggede Actor medvirker
+        query = query.Where(m =>
+            m.Cast.Any(ma => ma.Actor.UserId == userId));
+    }
+    else if (User.IsInRole("Director"))
+    {
+        // Find kun film instrueret af den indloggede Director
+        query = query.Where(m =>
+            m.Director != null &&
+            m.Director.UserId == userId);
+    }
+    else if (!User.IsInRole("Reviewer"))
+    {
+        // Afvis brugere uden en tilladt rolle
+        return Forbid();
     }
 
-    // GET api/movies/{id} - 2. Movie details
-        [HttpGet("{id:int}")]
-    public async Task<ActionResult<MovieDetailsDto>> GetById(int id)
-    {
-        var movie = await LoadDetailsAsync(id);
-        if (movie is null)
-            return NotFound(new ProblemDetails { Title = $"Movie with id {id} was not found." });
+    // Lav resultatet om til DTOs
+    var movies = await query
+        .OrderBy(m => m.Title)
+        .Select(m => new MovieOverviewDto
+        {
+            MovieId = m.MovieId,
+            Title = m.Title,
+            ReleaseDate = m.ReleaseDate,
+            Status = m.Status,
+            DirectorName = m.Director != null
+                ? m.Director.Name : null,
+            ProductionCompanyName = m.ProductionCompany != null
+                ? m.ProductionCompany.Name : null,
+            Budget = m.ProductionRecord != null
+                ? m.ProductionRecord.Budget : null
+        })
+        .ToListAsync();
 
-        return Ok(movie);
+    return Ok(movies);
+}
+
+
+
+[HttpGet("{id:int}")]
+public async Task<ActionResult<MovieDetailsDto>> GetById(int id)
+{
+    // Find den indloggede bruger gennem JWT
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    // Kontrollér om filmen eksisterer
+    var movieExists = await _db.Movies
+        .AnyAsync(m => m.MovieId == id);
+
+    if (!movieExists)
+    {
+        return NotFound(new ProblemDetails
+        {
+            Title = $"Movie with id {id} was not found."
+        });
     }
+
+    // Actor må kun se film, som personen medvirker i
+    if (User.IsInRole("Actor") && !User.IsInRole("Admin"))
+    {
+        var hasAccess = await _db.MovieActors
+            .AnyAsync(ma =>
+                ma.MovieId == id &&
+                ma.Actor.UserId == userId);
+
+        if (!hasAccess)
+            return Forbid();
+    }
+    // Director må kun se film, som personen har instrueret
+    else if (User.IsInRole("Director") && !User.IsInRole("Admin"))
+    {
+        var hasAccess = await _db.Movies
+            .AnyAsync(m =>
+                m.MovieId == id &&
+                m.Director != null &&
+                m.Director.UserId == userId);
+
+        if (!hasAccess)
+            return Forbid();
+    }
+    else if (!User.IsInRole("Reviewer") &&
+             !User.IsInRole("Admin"))
+    {
+        return Forbid();
+    }
+
+    // Hent filmens detaljer gennem den eksisterende metode
+    var movie = await LoadDetailsAsync(id);
+
+    return Ok(movie);
+}
+
 
     // POST api/movies
      [HttpPost]
+     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<MovieDetailsDto>> Create(MovieInputDto dto)
     {
         await ValidateBusinessRulesAsync(dto);
@@ -76,6 +155,7 @@ public class MoviesController : ControllerBase
     // PUT api/movies/{id}
     // PUT erstatter hele filmen sammen med production record
         [HttpPut("{id:int}")]
+        [Authorize(Roles = "Admin")]
     public async Task<ActionResult<MovieDetailsDto>> Update(int id, MovieInputDto dto)
     {
         var movie = await _db.Movies
@@ -97,6 +177,7 @@ public class MoviesController : ControllerBase
 
     // DELETE api/movies/{id}
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var movie = await _db.Movies.FindAsync(id);

@@ -1,4 +1,5 @@
 namespace MovieVault.Api.Entities;
+using MovieVault.Api.Auth;
 
 public class Director
 {
@@ -9,4 +10,6 @@ public class Director
 
     // directs: 1:N - én director kan instruere mange film
     public List<Movie> Movies { get; set; } = new();
+    public string? UserId { get; set; }
+    public ApiUser? User { get; set; }
 }

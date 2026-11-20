@@ -4,12 +4,14 @@ using Microsoft.EntityFrameworkCore;
 using MovieVault.Api.Data;
 using MovieVault.Api.DTOs;
 using MovieVault.Api.Entities;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace MovieVault.Api.Controllers;
 
 [ApiController]
 [Route("api/ticket-sales")]
-[Produces("application/json")]
+[Authorize]
 public class TicketSalesController : ControllerBase
 {
     private readonly MovieVaultDbContext _db;
@@ -60,6 +62,7 @@ public class TicketSalesController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(TicketSaleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TicketSaleDto>> CreateTicketSale(CreateTicketSaleDto dto)
     {
         // Serializable transaktion: to samtidige salg kan ikke begge se "der er plads" og overbooke salen
@@ -120,6 +123,7 @@ public class TicketSalesController : ControllerBase
     [ProducesResponseType(typeof(TicketSaleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<TicketSaleDto>> UpdateTicketSale(int id, UpdateTicketSaleDto dto)
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -169,6 +173,7 @@ public class TicketSalesController : ControllerBase
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteTicketSale(int id)
     {
         var sale = await _db.TicketSales.FindAsync(id);
@@ -184,31 +189,62 @@ public class TicketSalesController : ControllerBase
     /// Query 4: Billetsalg per film - antal solgte billetter og samlet omsætning.
     /// Salg til annullerede screenings tælles ikke med. Film uden salg vises med 0.
     /// </summary>
-    [HttpGet("by-movie")]
-    [ProducesResponseType(typeof(IEnumerable<MovieTicketSalesDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<MovieTicketSalesDto>>> GetTicketSalesByMovie()
-    {
-        // Movie -> Screenings -> TicketSales. SUM over billetter og over (antal * pris) pr. film.
-        var result = await _db.Movies
-            .Select(m => new MovieTicketSalesDto
-            {
-                MovieId = m.MovieId,
-                MovieTitle = m.Title,
-                TotalTicketsSold = m.Screenings
-                    .Where(s => s.Status != ScreeningStatus.Cancelled)
-                    .SelectMany(s => s.TicketSales)
-                    .Sum(t => (int?)t.TotalTickets) ?? 0,
-                TotalRevenue = m.Screenings
-                    .Where(s => s.Status != ScreeningStatus.Cancelled)
-                    .SelectMany(s => s.TicketSales.Select(t => t.TotalTickets * s.TicketPrice))
-                    .Sum(x => (decimal?)x) ?? 0m
-            })
-            .OrderByDescending(x => x.TotalRevenue)
-            .ThenBy(x => x.MovieTitle)
-            .ToListAsync();
 
-        return Ok(result);
+[HttpGet("by-movie")]
+[Authorize(Roles = "Actor,Director,Admin")]
+public async Task<ActionResult<IEnumerable<MovieTicketSalesDto>>>
+    GetTicketSalesByMovie()
+{
+    // Find brugerens ID fra JWT
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    // Start med alle film
+    var query = _db.Movies.AsNoTracking().AsQueryable();
+
+    // Admin ser alle film
+    if (User.IsInRole("Admin"))
+    {
+        // Ingen filtrering
     }
+    else if (User.IsInRole("Actor"))
+    {
+        // Actor ser kun film, personen medvirker i
+        query = query.Where(m =>
+            m.Cast.Any(ma => ma.Actor.UserId == userId));
+    }
+    else if (User.IsInRole("Director"))
+    {
+        // Director ser kun film, personen har instrueret
+        query = query.Where(m =>
+            m.Director != null &&
+            m.Director.UserId == userId);
+    }
+
+    // Beregn billetsalg for de tilladte film
+    var result = await query
+        .Select(m => new MovieTicketSalesDto
+        {
+            MovieId = m.MovieId,
+            MovieTitle = m.Title,
+
+            TotalTicketsSold = m.Screenings
+                .Where(s => s.Status != ScreeningStatus.Cancelled)
+                .SelectMany(s => s.TicketSales)
+                .Sum(t => (int?)t.TotalTickets) ?? 0,
+
+            TotalRevenue = m.Screenings
+                .Where(s => s.Status != ScreeningStatus.Cancelled)
+                .SelectMany(s => s.TicketSales
+                    .Select(t => t.TotalTickets * s.TicketPrice))
+                .Sum(x => (decimal?)x) ?? 0m
+        })
+        .OrderByDescending(x => x.TotalRevenue)
+        .ThenBy(x => x.MovieTitle)
+        .ToListAsync();
+
+    return Ok(result);
+}
+
 
     // ---------- Hjælpemetoder ----------
 

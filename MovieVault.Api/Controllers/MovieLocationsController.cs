@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MovieVault.Api.Data;
 using MovieVault.Api.DTOs;
 using MovieVault.Api.Entities;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MovieVault.Api.Controllers;
 
@@ -10,6 +11,7 @@ namespace MovieVault.Api.Controllers;
 // Samme mønster som MovieCastController, men på junction-tabellen MovieLocation
 [ApiController]
 [Route("api/movies/{movieId:int}/locations")]
+[Authorize]
 public class MovieLocationsController : ControllerBase
 {
     private readonly MovieVaultDbContext _db;
@@ -44,6 +46,7 @@ public class MovieLocationsController : ControllerBase
     }
     // POST /api/movies/{movieId}/locations tilknytter en location til filmen
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<FilmingLocationDto>> AddLocation(int movieId, AddFilmingLocationDto dto)
     {
         if (!await _db.Movies.AnyAsync(m => m.MovieId == movieId))
@@ -90,6 +93,7 @@ public class MovieLocationsController : ControllerBase
     // DELETE /api/movies/{movieId}/locations/{locationId}
     // Kun koblingen slettes, selve location bliver i databasen
     [HttpDelete("{locationId:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RemoveLocation(int movieId, int locationId)
     {
         var movieLocation = await _db.MovieLocations.FindAsync(movieId, locationId);

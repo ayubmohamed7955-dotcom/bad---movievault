@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MovieVault.Api.Data;
 using MovieVault.Api.DTOs;
 using MovieVault.Api.Entities;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MovieVault.Api.Controllers;
 
@@ -11,7 +12,7 @@ namespace MovieVault.Api.Controllers;
 
 [ApiController]
 [Route("api/movies/{movieId:int}/cast")]
-
+[Authorize]
 public class MovieCastController : ControllerBase
 {
     private readonly MovieVaultDbContext _db;
@@ -44,6 +45,7 @@ public class MovieCastController : ControllerBase
     }
     // POST /api/movies/{movieId}/cast tilføjer en skuespiller til filmen
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<CastMemberDto>> AddActor(int movieId, AddCastMemberDto dto)
     {
         // Filmen står i URL'en, findes den ikke, er ressourcen væk: 404
@@ -92,6 +94,7 @@ public class MovieCastController : ControllerBase
     // DELETE /api/movies/{movieId}/cast/{actorId} fjerner skuespilleren fra filmen
     // Kun rækken i MovieActor slettes, skuespilleren selv bliver i databasen
     [HttpDelete("{actorId:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RemoveActor(int movieId, int actorId)
     {
         var movieActor = await _db.MovieActors.FindAsync(movieId, actorId);

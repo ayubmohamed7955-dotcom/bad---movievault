@@ -3,11 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using MovieVault.Api.Data;
 using MovieVault.Api.DTOs;
 using MovieVault.Api.Entities;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace MovieVault.Api.Controllers;
 
 [ApiController]
 [Route("api/actors")]
+[Authorize]
 public class ActorsController : ControllerBase
 {
     private readonly MovieVaultDbContext _db;
@@ -38,8 +41,27 @@ public class ActorsController : ControllerBase
     // GET /api/actors/{actorId}/performance
     // Længeste kæde: Actor -> MovieActor -> Movie -> Screening -> TicketSale
     [HttpGet("{actorId:int}/performance")]
+    [Authorize(Roles = "Actor,Admin")]  
     public async Task<ActionResult<ActorPerformanceDto>> GetPerformance(int actorId)
     {
+            // Admin må se alle skuespillere
+    if (!User.IsInRole("Admin"))
+    {
+        // Find brugerens ID fra JWT-tokenen
+        var userId = User.FindFirstValue(
+            ClaimTypes.NameIdentifier);
+
+        // Kontrollér, om actorId tilhører brugeren
+        var isOwnActor = await _db.Actors
+            .AnyAsync(a =>
+                a.ActorId == actorId &&
+                a.UserId == userId);
+
+        if (!isOwnActor)
+        {
+            return Forbid();
+        }
+    }
         var performance = await _db.Actors
             .AsNoTracking()
             .Where(a => a.ActorId == actorId)
