@@ -1,12 +1,17 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MovieVault.Api.Middleware;
 
-// Logger alle POST, PUT og DELETE requests.
-// Middlewaren bestemmer HVAD der logges; Serilog-konfigurationen i appsettings.json
-// bestemmer HVOR det havner (MongoDB).
+// Logger alle POST, PUT og DELETE requests som strukturerede logs.
+// Middlewaren bestemmer HVAD der logges; Serilog-opsætningen i Program.cs bestemmer HVOR (MongoDB).
+//
+// Placering i pipelinen: efter UseAuthentication (så vi kender brugeren)
+// og før UseAuthorization (så 401 og 403 fra authorization også bliver logget).
 public class ChangeLoggingMiddleware
 {
+    public const string AnonymousUser = "anonymous";
+
     private readonly RequestDelegate _next;
     private readonly ILogger<ChangeLoggingMiddleware> _logger;
 
@@ -20,7 +25,7 @@ public class ChangeLoggingMiddleware
     {
         var method = context.Request.Method;
 
-        // GET og andre læse-requests sendes bare videre uden logging
+        // GET og andre læse-requests logges ikke
         if (!HttpMethods.IsPost(method) && !HttpMethods.IsPut(method) && !HttpMethods.IsDelete(method))
         {
             await _next(context);
@@ -28,7 +33,7 @@ public class ChangeLoggingMiddleware
         }
 
         var stopwatch = Stopwatch.StartNew();
-        int? statusCode = null;
+        int? statusCodeOverride = null;
 
         try
         {
@@ -36,20 +41,41 @@ public class ChangeLoggingMiddleware
         }
         catch
         {
-            // Ubehandlet fejl: responsen bliver 500
-            statusCode = StatusCodes.Status500InternalServerError;
+            // Ubehandlet fejl: klienten får 500
+            statusCodeOverride = StatusCodes.Status500InternalServerError;
             throw;
         }
         finally
         {
             stopwatch.Stop();
+
+            // Kun metode, sti, bruger og statuskode logges.
+            // Body (passwords), headers (JWT) og connection strings logges ALDRIG.
             _logger.LogInformation(
-                "HTTP {HttpMethod} {RequestPath} responded {StatusCode} at {RequestTimestamp} in {ElapsedMs} ms",
+                "{requestType} {route} by {username} responded {statusCode} at {timestamp} in {elapsedMs} ms",
                 method,
                 context.Request.Path.Value,
-                statusCode ?? context.Response.StatusCode,
-                DateTime.UtcNow,
+                ResolveUsername(context),
+                statusCodeOverride ?? context.Response.StatusCode,
+                DateTime.UtcNow.ToString("O"), // ISO 8601 i UTC, fx 2026-11-24T20:15:03.1234567Z
                 stopwatch.ElapsedMilliseconds);
         }
+    }
+
+    // "anonymous" for offentlige endpoints (fx login og læsning af reviews), også selvom der sendes et token,
+    // og for requests uden en gyldig bruger. Ellers brugernavnet fra JWT'en.
+    private static string ResolveUsername(HttpContext context)
+    {
+        var endpoint = context.GetEndpoint();
+
+        var isPublicEndpoint =
+            endpoint is null
+            || endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null
+            || endpoint.Metadata.GetMetadata<IAuthorizeData>() is null;
+
+        if (isPublicEndpoint || context.User.Identity?.IsAuthenticated != true)
+            return AnonymousUser;
+
+        return context.User.Identity.Name ?? AnonymousUser;
     }
 }
