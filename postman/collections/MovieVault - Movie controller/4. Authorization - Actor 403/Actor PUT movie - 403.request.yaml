@@ -1,0 +1,33 @@
+$kind: http-request
+name: Actor PUT movie -> 403
+description: Targets the Postman test movie, so nothing important changes if authorization is broken.
+url: "{{baseUrl}}/api/movies/{{createdMovieId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Postman Test Movie (updated)",
+      "releaseDate": "2027-02-01",
+      "runtimeMinutes": 101,
+      "ageRating": "11",
+      "status": "InProduction",
+      "directorId": 1,
+      "productionCompanyId": 1,
+      "productionRecord": {
+        "budget": 1000000,
+        "shootingStartDate": "2026-06-01",
+        "shootingEndDate": "2026-07-15"
+      }
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{actorToken}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is 403 Forbidden", () => pm.response.to.have.status(403));
+    language: text/javascript
+order: 2000

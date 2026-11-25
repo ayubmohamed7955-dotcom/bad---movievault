@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/api/movies/1"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200", () => pm.response.to.have.status(200));
+
+      const movie = pm.response.json();
+
+      pm.test("Returns movie 1 'The Last Lighthouse'", () => {
+          pm.expect(movie.movieId).to.eql(1);
+          pm.expect(movie.title).to.eql("The Last Lighthouse");
+      });
+
+      pm.test("Details include cast and filming locations", () => {
+          pm.expect(movie.cast).to.be.an("array").that.is.not.empty;
+          pm.expect(movie.filmingLocations).to.be.an("array");
+      });
+    language: text/javascript
+order: 2000

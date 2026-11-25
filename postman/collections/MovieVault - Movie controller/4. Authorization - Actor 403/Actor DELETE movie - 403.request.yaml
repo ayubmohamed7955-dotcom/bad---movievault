@@ -1,0 +1,14 @@
+$kind: http-request
+name: Actor DELETE movie -> 403
+description: Targets the Postman test movie, so no seed data is lost if authorization is broken.
+url: "{{baseUrl}}/api/movies/{{createdMovieId}}"
+method: DELETE
+auth:
+  type: bearer
+  credentials:
+    token: "{{actorToken}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is 403 Forbidden", () => pm.response.to.have.status(403));
+    language: text/javascript
+order: 3000

@@ -1,0 +1,13 @@
+$kind: collection
+description: |-
+  Tests for the Movie controller: CRUD, authentication (401), authorization (403) and role-dependent results.
+
+  Run the whole collection in order with the Collection Runner. Folders and requests depend on each other through environment variables (adminToken, actorToken, createdMovieId, adminMovieCount).
+
+  Requires the seeded demo users and seed data. Fill in adminPassword and actorPassword in your local environment.
+auth:
+  - id: 460bb39a-054e-4a45-a137-c1625344e687
+    type: bearer
+    name: bearer auth
+    credentials:
+      token: "{{adminToken}}"

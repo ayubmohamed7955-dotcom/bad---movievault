@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/api/movies/{{createdMovieId}}"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200", () => pm.response.to.have.status(200));
+
+      pm.test("Returns the created movie", () => {
+          const movie = pm.response.json();
+          pm.expect(movie.movieId).to.eql(Number(pm.environment.get("createdMovieId")));
+          pm.expect(movie.title).to.eql("Postman Test Movie");
+      });
+    language: text/javascript
+order: 4000

@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/api/movies"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200", () => pm.response.to.have.status(200));
+
+      const movies = pm.response.json();
+
+      pm.test("Response is a non-empty array", () => {
+          pm.expect(movies).to.be.an("array").that.is.not.empty;
+      });
+
+      pm.test("Each movie has movieId and title", () => {
+          movies.forEach(m => {
+              pm.expect(m).to.have.property("movieId");
+              pm.expect(m).to.have.property("title");
+          });
+      });
+    language: text/javascript
+order: 1000

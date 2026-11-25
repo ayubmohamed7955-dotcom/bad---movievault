@@ -1,0 +1,940 @@
+{
+  "info": {
+    "name": "MovieVault - Movie controller",
+    "description": "Tests for the Movie controller: CRUD, authentication (401), authorization (403) and role-dependent results.\n\nRun the whole collection in order with the Collection Runner. Folders and requests depend on each other through environment variables (adminToken, actorToken, createdMovieId, adminMovieCount).\n\nRequires the seeded demo users and seed data. Fill in adminPassword and actorPassword in your local environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{adminToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Login",
+      "description": "Gets tokens for Admin and Actor. Must run first.",
+      "item": [
+        {
+          "name": "Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test(\"Response contains a token\", () => {",
+                  "    pm.expect(body.token).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"User has the Admin role\", () => {",
+                  "    pm.expect(body.roles).to.include(\"Admin\");",
+                  "});",
+                  "",
+                  "// Gem tokenet til de næste requests",
+                  "pm.environment.set(\"adminToken\", body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Logs in as the seeded Admin demo user and stores the JWT in adminToken.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userName\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login as Actor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test(\"Response contains a token\", () => {",
+                  "    pm.expect(body.token).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"User has the Actor role\", () => {",
+                  "    pm.expect(body.roles).to.include(\"Actor\");",
+                  "});",
+                  "",
+                  "pm.environment.set(\"actorToken\", body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Logs in as actor.demo, who is linked to Mikkel Strand (ActorId 1). Stores the JWT in actorToken.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userName\": \"{{actorUsername}}\",\n  \"password\": \"{{actorPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication - 401",
+      "description": "Movie endpoints require a valid token.",
+      "item": [
+        {
+          "name": "GET all movies without token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies"
+              ]
+            },
+            "description": "No Authorization header. The endpoint requires authentication.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET movie by id without token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies",
+                "1"
+              ]
+            },
+            "description": "No Authorization header. The endpoint requires authentication.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET all movies with invalid token -> 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies"
+              ]
+            },
+            "description": "A token whose signature cannot be validated is rejected with 401.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "this.is.not-a-valid-jwt",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Movie CRUD - Admin",
+      "description": "Admin creates and updates a test movie. Its id is stored in createdMovieId.",
+      "item": [
+        {
+          "name": "GET all movies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const movies = pm.response.json();",
+                  "",
+                  "pm.test(\"Response is a non-empty array\", () => {",
+                  "    pm.expect(movies).to.be.an(\"array\").that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test(\"Each movie has movieId and title\", () => {",
+                  "    movies.forEach(m => {",
+                  "        pm.expect(m).to.have.property(\"movieId\");",
+                  "        pm.expect(m).to.have.property(\"title\");",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET movie by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const movie = pm.response.json();",
+                  "",
+                  "pm.test(\"Returns movie 1 'The Last Lighthouse'\", () => {",
+                  "    pm.expect(movie.movieId).to.eql(1);",
+                  "    pm.expect(movie.title).to.eql(\"The Last Lighthouse\");",
+                  "});",
+                  "",
+                  "pm.test(\"Details include cast and filming locations\", () => {",
+                  "    pm.expect(movie.cast).to.be.an(\"array\").that.is.not.empty;",
+                  "    pm.expect(movie.filmingLocations).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies",
+                "1"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST create movie",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", () => pm.response.to.have.status(201));",
+                  "",
+                  "const movie = pm.response.json();",
+                  "const sent = JSON.parse(pm.request.body.raw);",
+                  "",
+                  "pm.test(\"Response contains the new movieId\", () => {",
+                  "    pm.expect(movie.movieId).to.be.a(\"number\").above(0);",
+                  "});",
+                  "",
+                  "pm.test(\"Returned values match the request\", () => {",
+                  "    pm.expect(movie.title).to.eql(sent.title);",
+                  "    pm.expect(movie.runtimeMinutes).to.eql(sent.runtimeMinutes);",
+                  "    pm.expect(movie.status).to.eql(sent.status);",
+                  "    pm.expect(movie.directorId).to.eql(sent.directorId);",
+                  "});",
+                  "",
+                  "pm.test(\"Location header points to the new movie\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/api/movies/\" + movie.movieId);",
+                  "});",
+                  "",
+                  "// Bruges af de næste requests",
+                  "pm.environment.set(\"createdMovieId\", movie.movieId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman Test Movie\",\n  \"releaseDate\": \"2027-02-01\",\n  \"runtimeMinutes\": 95,\n  \"ageRating\": \"11\",\n  \"status\": \"Planned\",\n  \"directorId\": 1,\n  \"productionCompanyId\": 1,\n  \"productionRecord\": {\n    \"budget\": 1000000,\n    \"shootingStartDate\": \"2026-06-01\",\n    \"shootingEndDate\": \"2026-07-15\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET created movie",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test(\"Returns the created movie\", () => {",
+                  "    const movie = pm.response.json();",
+                  "    pm.expect(movie.movieId).to.eql(Number(pm.environment.get(\"createdMovieId\")));",
+                  "    pm.expect(movie.title).to.eql(\"Postman Test Movie\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/{{createdMovieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies",
+                "{{createdMovieId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT update movie",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const movie = pm.response.json();",
+                  "const sent = JSON.parse(pm.request.body.raw);",
+                  "",
+                  "pm.test(\"Movie was updated\", () => {",
+                  "    pm.expect(movie.movieId).to.eql(Number(pm.environment.get(\"createdMovieId\")));",
+                  "    pm.expect(movie.title).to.eql(sent.title);",
+                  "    pm.expect(movie.status).to.eql(sent.status);",
+                  "    pm.expect(movie.runtimeMinutes).to.eql(sent.runtimeMinutes);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/{{createdMovieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies",
+                "{{createdMovieId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman Test Movie (updated)\",\n  \"releaseDate\": \"2027-02-01\",\n  \"runtimeMinutes\": 101,\n  \"ageRating\": \"11\",\n  \"status\": \"InProduction\",\n  \"directorId\": 1,\n  \"productionCompanyId\": 1,\n  \"productionRecord\": {\n    \"budget\": 1000000,\n    \"shootingStartDate\": \"2026-06-01\",\n    \"shootingEndDate\": \"2026-07-15\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Authorization - Actor 403",
+      "description": "An authenticated Actor cannot create, update or delete movies. Runs before the test movie is deleted.",
+      "item": [
+        {
+          "name": "Actor POST movie -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 403 Forbidden\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies"
+              ]
+            },
+            "description": "The Actor is authenticated (valid token) but does not have the Admin role.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{actorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman Test Movie\",\n  \"releaseDate\": \"2027-02-01\",\n  \"runtimeMinutes\": 95,\n  \"ageRating\": \"11\",\n  \"status\": \"Planned\",\n  \"directorId\": 1,\n  \"productionCompanyId\": 1,\n  \"productionRecord\": {\n    \"budget\": 1000000,\n    \"shootingStartDate\": \"2026-06-01\",\n    \"shootingEndDate\": \"2026-07-15\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Actor PUT movie -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 403 Forbidden\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/{{createdMovieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies",
+                "{{createdMovieId}}"
+              ]
+            },
+            "description": "Targets the Postman test movie, so nothing important changes if authorization is broken.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{actorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman Test Movie (updated)\",\n  \"releaseDate\": \"2027-02-01\",\n  \"runtimeMinutes\": 101,\n  \"ageRating\": \"11\",\n  \"status\": \"InProduction\",\n  \"directorId\": 1,\n  \"productionCompanyId\": 1,\n  \"productionRecord\": {\n    \"budget\": 1000000,\n    \"shootingStartDate\": \"2026-06-01\",\n    \"shootingEndDate\": \"2026-07-15\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Actor DELETE movie -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 403 Forbidden\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/{{createdMovieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies",
+                "{{createdMovieId}}"
+              ]
+            },
+            "description": "Targets the Postman test movie, so no seed data is lost if authorization is broken.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{actorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Movie CRUD - Admin delete",
+      "description": "Admin deletes the test movie and verifies it is gone.",
+      "item": [
+        {
+          "name": "DELETE movie",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 204 No Content\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/{{createdMovieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies",
+                "{{createdMovieId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET deleted movie -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404 Not Found\", () => pm.response.to.have.status(404));",
+                  "",
+                  "// Ryd op, så næste kørsel starter rent",
+                  "pm.environment.unset(\"createdMovieId\");"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/{{createdMovieId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies",
+                "{{createdMovieId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Role-based movie access",
+      "description": "Same endpoint, different results for Admin and Actor.",
+      "item": [
+        {
+          "name": "Admin GET /api/movies returns all movies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const ids = pm.response.json().map(m => m.movieId);",
+                  "",
+                  "// Alle seedede film (1-6), også dem actor.demo IKKE medvirker i (2, 4, 6)",
+                  "pm.test(\"Contains all seeded movies 1-6\", () => {",
+                  "    [1, 2, 3, 4, 5, 6].forEach(id => pm.expect(ids).to.include(id));",
+                  "});",
+                  "",
+                  "// Gemmes, så Actor-testen kan sammenligne med den fulde liste",
+                  "pm.environment.set(\"adminMovieCount\", ids.length);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies"
+              ]
+            },
+            "description": "Admin always has access to all movies.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actor GET /api/movies returns only own movies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "const ids = pm.response.json().map(m => m.movieId).sort((a, b) => a - b);",
+                  "",
+                  "// actor.demo = Mikkel Strand (ActorId 1), som medvirker i film 1, 3 og 5 (seed data)",
+                  "pm.test(\"Returns exactly the actor's movies 1, 3 and 5\", () => {",
+                  "    pm.expect(ids).to.eql([1, 3, 5]);",
+                  "});",
+                  "",
+                  "pm.test(\"Does not include movies the actor is not in (2, 4, 6)\", () => {",
+                  "    [2, 4, 6].forEach(id => pm.expect(ids).to.not.include(id));",
+                  "});",
+                  "",
+                  "pm.test(\"Returns fewer movies than Admin\", () => {",
+                  "    pm.expect(ids.length).to.be.below(Number(pm.environment.get(\"adminMovieCount\")));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies"
+              ]
+            },
+            "description": "Same endpoint, but the result is filtered to movies the logged-in Actor appears in.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{actorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Actor GET another movie by id -> 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 403 Forbidden\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/movies/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "movies",
+                "2"
+              ]
+            },
+            "description": "Movie 2 does not feature actor.demo. Extra test: the same rule applies to GET /api/movies/{id}.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{actorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": []
+}

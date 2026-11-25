@@ -83,3 +83,83 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost,
 | API base URL | http://localhost:5019/api |
 | Scalar UI | http://localhost:5019/scalar |
 | OpenAPI JSON | http://localhost:5019/openapi/v1.json |
+
+
+## Ticket sale simulator
+
+`MovieVault.Simulator` is a .NET Worker Service that periodically creates simulated ticket sales through the MovieVault API. It never accesses the databases directly.
+
+### How it works
+
+Every `Simulator:IntervalSeconds` seconds the simulator runs one round:
+
+1. Logs in with the service account (`POST /api/auth/login`) and reuses the JWT until it is about to expire.
+2. Retrieves movies (`GET /api/movies`) and picks a random movie.
+3. Retrieves the movie's screenings (`GET /api/movies/{movieId}/screenings`) and keeps those that are `Scheduled`, in the future and have available seats.
+4. Picks a random screening and a random number of tickets (1 to `Simulator:MaxTicketsPerSale`).
+5. Registers the sale (`POST /api/ticket-sales` with `screeningId` and `totalTickets`).
+
+The simulator only sends `screeningId` and `totalTickets`, exactly like a manual sale. The API sets the price and sale date and checks status, start time and capacity, so simulated sales follow the same business rules. The ticket quantity is deliberately not limited to the available seats; the API is responsible for rejecting sales that would exceed capacity. Accepted sales are stored in SQL Server and included in the existing ticket sales queries.
+
+### Failure handling
+
+| Situation | Behaviour |
+|---|---|
+| `401 Unauthorized` (token expired or invalid) | Logs in again and retries the request once |
+| `400` / `403` / `409` (rejected by a business rule or access control) | Logged as a warning; the simulator continues |
+| `5xx`, timeout (10 s) or API not reachable | Exception is caught and logged; the request is retried in the next round |
+| Any other exception | Logged as an error; the simulator continues |
+
+The simulator never terminates because of a failed request. During `docker compose up` the first rounds may fail while the API is migrating the database; the simulator then continues automatically.
+
+### Configuration
+
+| Key | Environment variable (Docker) | Default | Description |
+|---|---|---|---|
+| `MovieVaultApi:BaseUrl` | `MovieVaultApi__BaseUrl` | `http://localhost:5019` | API address. In Docker `http://api:8080` (Compose service name) |
+| `ServiceAccount:UserName` | `ServiceAccount__UserName` | – | Service account (Admin role), seeded by the API |
+| `ServiceAccount:Password` | `ServiceAccount__Password` | – | Service account password |
+| `Simulator:IntervalSeconds` | `Simulator__IntervalSeconds` | `15` | Seconds between simulated sales |
+| `Simulator:MaxTicketsPerSale` | `Simulator__MaxTicketsPerSale` | `4` | Maximum tickets in one sale |
+
+In Docker the values come from `.env` through `compose.yaml`. Inside a container `localhost` refers to the container itself, so the simulator uses the service name `api` to reach the API container.
+
+To run the simulator locally against an API started with the `http` profile:
+
+```powershell
+cd MovieVault.Simulator
+dotnet user-secrets set "ServiceAccount:UserName" "simulator.service"
+dotnet user-secrets set "ServiceAccount:Password" "<same password as the API's ServiceAccount:Password>"
+dotnet run
+```
+
+Follow the simulator in Docker with `docker compose logs -f simulator`.
+
+## Postman tests
+
+The `postman/` folder contains:
+
+- `MovieVault.postman_collection.json` – tests for the Movie controller
+- `MovieVault.postman_environment.json` – environment template without secrets
+
+### Setup
+
+1. Import both files in Postman.
+2. Select the environment **MovieVault - template**.
+3. Fill in `adminPassword` and `actorPassword` with your local demo passwords (the values from `.env`). Do not export or commit the environment with real values.
+4. Set `baseUrl` to `http://localhost:5019` (local, `http` profile) or `http://localhost:8080` (Docker Compose).
+
+### Execution order
+
+Run the whole collection with the Collection Runner, in this order. The requests depend on each other through environment variables.
+
+| Folder | Requests | Verifies |
+|---|---|---|
+| 1. Login | Login as Admin, Login as Actor | 200, token and role. Stores `adminToken` and `actorToken` |
+| 2. Authentication - 401 | `GET /api/movies` and `GET /api/movies/1` without token, `GET /api/movies` with invalid token | 401 Unauthorized |
+| 3. Movie CRUD - Admin | GET all, GET by id, POST, GET created, PUT | 200/201, response values, `Location` header. Stores `createdMovieId` |
+| 4. Authorization - Actor 403 | Actor POST, PUT and DELETE on the test movie | 403 Forbidden |
+| 5. Movie CRUD - Admin delete | DELETE test movie, GET it again | 204, then 404 |
+| 6. Role-based movie access | Admin `GET /api/movies`, Actor `GET /api/movies`, Actor `GET /api/movies/2` | Admin gets all movies 1–6; Actor (`actor.demo` = Mikkel Strand) gets only movies 1, 3 and 5; Actor gets 403 on movie 2 |
+
+The Actor tests in folder 4 target the test movie created in folder 3, so no seed data is changed if authorization were broken. The collection cleans up after itself and can be run again.

@@ -1,0 +1,3 @@
+$kind: collection
+description: Movie endpoints require a valid token.
+order: 2000

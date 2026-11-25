@@ -1,0 +1,3 @@
+$kind: collection
+description: Admin creates and updates a test movie. Its id is stored in createdMovieId.
+order: 3000

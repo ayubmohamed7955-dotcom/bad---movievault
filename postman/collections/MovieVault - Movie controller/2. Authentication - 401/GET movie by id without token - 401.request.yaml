@@ -1,0 +1,12 @@
+$kind: http-request
+name: GET movie by id without token -> 401
+description: No Authorization header. The endpoint requires authentication.
+url: "{{baseUrl}}/api/movies/1"
+method: GET
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is 401 Unauthorized", () => pm.response.to.have.status(401));
+    language: text/javascript
+order: 2000

@@ -1,0 +1,3 @@
+$kind: collection
+description: Gets tokens for Admin and Actor. Must run first.
+order: 1000

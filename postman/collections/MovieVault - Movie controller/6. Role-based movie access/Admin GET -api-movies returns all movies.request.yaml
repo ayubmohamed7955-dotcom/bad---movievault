@@ -1,0 +1,25 @@
+$kind: http-request
+name: Admin GET /api/movies returns all movies
+description: Admin always has access to all movies.
+url: "{{baseUrl}}/api/movies"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200", () => pm.response.to.have.status(200));
+
+      const ids = pm.response.json().map(m => m.movieId);
+
+      // Alle seedede film (1-6), også dem actor.demo IKKE medvirker i (2, 4, 6)
+      pm.test("Contains all seeded movies 1-6", () => {
+          [1, 2, 3, 4, 5, 6].forEach(id => pm.expect(ids).to.include(id));
+      });
+
+      // Gemmes, så Actor-testen kan sammenligne med den fulde liste
+      pm.environment.set("adminMovieCount", ids.length);
+    language: text/javascript
+order: 1000

@@ -1,0 +1,17 @@
+$kind: http-request
+name: GET deleted movie -> 404
+url: "{{baseUrl}}/api/movies/{{createdMovieId}}"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 404 Not Found", () => pm.response.to.have.status(404));
+
+      // Ryd op, så næste kørsel starter rent
+      pm.environment.unset("createdMovieId");
+    language: text/javascript
+order: 2000

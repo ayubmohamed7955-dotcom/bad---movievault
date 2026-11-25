@@ -1,0 +1,33 @@
+$kind: http-request
+name: Actor POST movie -> 403
+description: The Actor is authenticated (valid token) but does not have the Admin role.
+url: "{{baseUrl}}/api/movies"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Postman Test Movie",
+      "releaseDate": "2027-02-01",
+      "runtimeMinutes": 95,
+      "ageRating": "11",
+      "status": "Planned",
+      "directorId": 1,
+      "productionCompanyId": 1,
+      "productionRecord": {
+        "budget": 1000000,
+        "shootingStartDate": "2026-06-01",
+        "shootingEndDate": "2026-07-15"
+      }
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{actorToken}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is 403 Forbidden", () => pm.response.to.have.status(403));
+    language: text/javascript
+order: 1000

@@ -1,0 +1,13 @@
+# Use this workspace to collaborate
+workspace:
+  id: 35a7a63e-90a9-4bd6-8db7-8bf19530d48c
+
+cloudResources:
+  collections:
+    ..\postman\collections\MovieVault - Movie controller: de7c13b0-a2f6-4f84-a497-34b6386f5d74
+
+# All resources in the `postman/` folder are automatically registered in Local View.
+# Point to additional files outside the `postman/` folder to register them individually. Example:
+#localResources:
+#  collections:
+#    - ../tests/E2E Test Collection/

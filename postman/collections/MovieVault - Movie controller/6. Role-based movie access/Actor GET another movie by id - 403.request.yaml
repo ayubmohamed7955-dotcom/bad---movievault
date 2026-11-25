@@ -1,0 +1,14 @@
+$kind: http-request
+name: Actor GET another movie by id -> 403
+description: "Movie 2 does not feature actor.demo. Extra test: the same rule applies to GET /api/movies/{id}."
+url: "{{baseUrl}}/api/movies/2"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{actorToken}}"
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is 403 Forbidden", () => pm.response.to.have.status(403));
+    language: text/javascript
+order: 3000

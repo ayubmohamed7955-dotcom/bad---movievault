@@ -1,0 +1,14 @@
+$kind: http-request
+name: GET all movies with invalid token -> 401
+description: A token whose signature cannot be validated is rejected with 401.
+url: "{{baseUrl}}/api/movies"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: this.is.not-a-valid-jwt
+scripts:
+  - type: afterResponse
+    code: pm.test("Status code is 401 Unauthorized", () => pm.response.to.have.status(401));
+    language: text/javascript
+order: 3000

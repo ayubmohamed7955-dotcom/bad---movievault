@@ -1,0 +1,34 @@
+$kind: http-request
+description: Logs in as the seeded Admin demo user and stores the JWT in adminToken.
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "userName": "{{adminUsername}}",
+      "password": "{{adminPassword}}"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200", () => pm.response.to.have.status(200));
+
+      const body = pm.response.json();
+
+      pm.test("Response contains a token", () => {
+          pm.expect(body.token).to.be.a("string").and.not.empty;
+      });
+
+      pm.test("User has the Admin role", () => {
+          pm.expect(body.roles).to.include("Admin");
+      });
+
+      // Gem tokenet til de næste requests
+      pm.environment.set("adminToken", body.token);
+    language: text/javascript
+order: 1000

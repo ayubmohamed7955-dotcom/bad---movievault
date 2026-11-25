@@ -1,0 +1,42 @@
+$kind: http-request
+url: "{{baseUrl}}/api/movies/{{createdMovieId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Postman Test Movie (updated)",
+      "releaseDate": "2027-02-01",
+      "runtimeMinutes": 101,
+      "ageRating": "11",
+      "status": "InProduction",
+      "directorId": 1,
+      "productionCompanyId": 1,
+      "productionRecord": {
+        "budget": 1000000,
+        "shootingStartDate": "2026-06-01",
+        "shootingEndDate": "2026-07-15"
+      }
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{adminToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200", () => pm.response.to.have.status(200));
+
+      const movie = pm.response.json();
+      const sent = JSON.parse(pm.request.body.raw);
+
+      pm.test("Movie was updated", () => {
+          pm.expect(movie.movieId).to.eql(Number(pm.environment.get("createdMovieId")));
+          pm.expect(movie.title).to.eql(sent.title);
+          pm.expect(movie.status).to.eql(sent.status);
+          pm.expect(movie.runtimeMinutes).to.eql(sent.runtimeMinutes);
+      });
+    language: text/javascript
+order: 5000

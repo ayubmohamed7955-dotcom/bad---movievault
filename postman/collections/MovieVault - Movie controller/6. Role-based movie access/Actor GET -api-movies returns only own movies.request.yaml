@@ -1,0 +1,30 @@
+$kind: http-request
+name: Actor GET /api/movies returns only own movies
+description: Same endpoint, but the result is filtered to movies the logged-in Actor appears in.
+url: "{{baseUrl}}/api/movies"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{actorToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200", () => pm.response.to.have.status(200));
+
+      const ids = pm.response.json().map(m => m.movieId).sort((a, b) => a - b);
+
+      // actor.demo = Mikkel Strand (ActorId 1), som medvirker i film 1, 3 og 5 (seed data)
+      pm.test("Returns exactly the actor's movies 1, 3 and 5", () => {
+          pm.expect(ids).to.eql([1, 3, 5]);
+      });
+
+      pm.test("Does not include movies the actor is not in (2, 4, 6)", () => {
+          [2, 4, 6].forEach(id => pm.expect(ids).to.not.include(id));
+      });
+
+      pm.test("Returns fewer movies than Admin", () => {
+          pm.expect(ids.length).to.be.below(Number(pm.environment.get("adminMovieCount")));
+      });
+    language: text/javascript
+order: 2000

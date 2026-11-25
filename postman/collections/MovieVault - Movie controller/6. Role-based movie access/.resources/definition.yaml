@@ -1,0 +1,3 @@
+$kind: collection
+description: Same endpoint, different results for Admin and Actor.
+order: 6000

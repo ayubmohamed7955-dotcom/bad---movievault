@@ -1,0 +1,3 @@
+$kind: collection
+description: Admin deletes the test movie and verifies it is gone.
+order: 5000
