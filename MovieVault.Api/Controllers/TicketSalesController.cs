@@ -26,9 +26,27 @@ public class TicketSalesController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<TicketSaleDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<TicketSaleDto>>> GetTicketSales([FromQuery] int? screeningId)
     {
-        var query = _db.TicketSales.AsQueryable();
-        if (screeningId is not null)
-            query = query.Where(t => t.ScreeningId == screeningId);
+var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+var query = _db.TicketSales.AsNoTracking().AsQueryable();
+
+if (User.IsInRole("Actor"))
+{
+    query = query.Where(t =>
+        t.Screening.Movie.Cast.Any(mc =>
+            mc.Actor.UserId == userId));
+}
+else if (User.IsInRole("Director"))
+{
+    query = query.Where(t =>
+        t.Screening.Movie.Director != null &&
+        t.Screening.Movie.Director.UserId == userId);
+}
+
+if (screeningId is not null)
+{
+    query = query.Where(t => t.ScreeningId == screeningId);
+}
 
         var sales = await query
             .OrderByDescending(t => t.SaleDate)
@@ -39,21 +57,53 @@ public class TicketSalesController : ControllerBase
     }
 
     /// <summary>Henter ét billetsalg.</summary>
-    [HttpGet("{id:int}", Name = nameof(GetTicketSale))]
-    [ProducesResponseType(typeof(TicketSaleDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TicketSaleDto>> GetTicketSale(int id)
+
+[HttpGet("{id:int}", Name = nameof(GetTicketSale))]
+[ProducesResponseType(typeof(TicketSaleDto), StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
+public async Task<ActionResult<TicketSaleDto>> GetTicketSale(int id)
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    var query = _db.TicketSales
+        .AsNoTracking()
+        .Where(t => t.TicketSaleId == id);
+
+    // Find først ud af, om billetsalget eksisterer
+    if (!await query.AnyAsync())
     {
-        var sale = await _db.TicketSales
-            .Where(t => t.TicketSaleId == id)
-            .Select(ToDtoProjection)
-            .FirstOrDefaultAsync();
-
-        if (sale is null)
-            return Problem(statusCode: 404, title: "Ticket sale not found", detail: $"No ticket sale with id {id}.");
-
-        return Ok(sale);
+        return NotFound();
     }
+
+    // Actor må kun se billetsalg fra egne film
+    if (User.IsInRole("Actor"))
+    {
+        var hasAccess = await query.AnyAsync(t =>
+            t.Screening.Movie.Cast.Any(mc =>
+                mc.Actor.UserId == userId));
+
+        if (!hasAccess)
+            return Forbid();
+    }
+    // Director må kun se billetsalg fra egne film
+    else if (User.IsInRole("Director"))
+    {
+        var hasAccess = await query.AnyAsync(t =>
+            t.Screening.Movie.Director != null &&
+            t.Screening.Movie.Director.UserId == userId);
+
+        if (!hasAccess)
+            return Forbid();
+    }
+
+    var sale = await query
+        .Select(ToDtoProjection)
+        .FirstAsync();
+
+    return Ok(sale);
+}
+
 
     /// <summary>
     /// Registrerer et billetsalg. Tjekker at screeningen findes, ikke er annulleret eller startet,
