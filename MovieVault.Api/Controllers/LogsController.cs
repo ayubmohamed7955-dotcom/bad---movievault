@@ -23,7 +23,7 @@ public class LogsController : ControllerBase
 
     /// <summary>
     /// Henter request-logs fra MongoDB (kun Admin), nyeste først.
-    /// Filtre: ?username=admin.demo &amp; date=2026-11-24 &amp; requestType=POST &amp; route=/api/ticket-sales.
+    /// Filtre: ?username=admin.demo, date=2026-11-24, requestType=POST og route=/api/ticket-sales.
     /// Filtrene kan kombineres, og tomme eller udeladte filtre ignoreres.
     /// </summary>
     [HttpGet]
