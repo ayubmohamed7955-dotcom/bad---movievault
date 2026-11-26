@@ -30,3 +30,12 @@ public enum ScreeningStatus
     Scheduled,
     Cancelled
 }
+
+public enum MediaOutletType
+{
+    Newspaper,
+    TvChannel,
+    Magazine,
+    Radio,
+    Online
+}

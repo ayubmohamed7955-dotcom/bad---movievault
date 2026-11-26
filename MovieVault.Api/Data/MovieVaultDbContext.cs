@@ -30,6 +30,11 @@ public class MovieVaultDbContext : IdentityDbContext<ApiUser>
     public DbSet<Screening> Screenings => Set<Screening>();
     public DbSet<TicketSale> TicketSales => Set<TicketSale>();
 
+    // Anmeldelser
+    public DbSet<MediaOutlet> MediaOutlets => Set<MediaOutlet>();
+    public DbSet<Reviewer> Reviewers => Set<Reviewer>();
+    public DbSet<Review> Reviews => Set<Review>();
+
     // Enums gemmes som tekst i databasen ("Released" i stedet for 2), så data kan læses direkte
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -37,6 +42,7 @@ public class MovieVaultDbContext : IdentityDbContext<ApiUser>
         configurationBuilder.Properties<RoleType>().HaveConversion<string>().HaveMaxLength(20);
         configurationBuilder.Properties<LocationType>().HaveConversion<string>().HaveMaxLength(20);
         configurationBuilder.Properties<ScreeningStatus>().HaveConversion<string>().HaveMaxLength(20);
+        configurationBuilder.Properties<MediaOutletType>().HaveConversion<string>().HaveMaxLength(20);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -225,8 +231,63 @@ public class MovieVaultDbContext : IdentityDbContext<ApiUser>
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        // ---------- MediaOutlet ----------
+        modelBuilder.Entity<MediaOutlet>(e =>
+        {
+            e.Property(o => o.Name).IsRequired().HasMaxLength(150);
+            e.Property(o => o.Website).HasMaxLength(200);
+
+            // Samme medie skal ikke findes to gange
+            e.HasIndex(o => o.Name).IsUnique();
+        });
+
+        // ---------- Reviewer ----------
+        modelBuilder.Entity<Reviewer>(e =>
+        {
+            e.Property(r => r.Name).IsRequired().HasMaxLength(100);
+
+            // works for (N:1): et medie med anmeldere kan ikke slettes
+            e.HasOne(r => r.MediaOutlet)
+                .WithMany(o => o.Reviewers)
+                .HasForeignKey(r => r.MediaOutletId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 1:1 til Identity-brugeren - samme mønster som Actor og Director (unikt index på UserId)
+            e.HasOne(r => r.User)
+                .WithOne()
+                .HasForeignKey<Reviewer>(r => r.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ---------- Review ----------
+        modelBuilder.Entity<Review>(e =>
+        {
+            e.Property(r => r.Headline).IsRequired().HasMaxLength(150);
+            e.Property(r => r.Body).IsRequired().HasMaxLength(4000);
+            e.ToTable(t => t.HasCheckConstraint("CK_Review_Rating", "[Rating] BETWEEN 1 AND 5"));
+
+            // reviews (N:1): anmeldelser hører til filmen og slettes sammen med den
+            e.HasOne(r => r.Movie)
+                .WithMany(m => m.Reviews)
+                .HasForeignKey(r => r.MovieId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // writes (N:1): en anmelder med anmeldelser kan ikke slettes
+            e.HasOne(r => r.Reviewer)
+                .WithMany(rv => rv.Reviews)
+                .HasForeignKey(r => r.ReviewerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // publishes (N:1): et medie med anmeldelser kan ikke slettes
+            e.HasOne(r => r.MediaOutlet)
+                .WithMany(o => o.Reviews)
+                .HasForeignKey(r => r.MediaOutletId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // ---------- Seed data ----------
         modelBuilder.SeedMovieData();
         modelBuilder.SeedCinemaData();
+        modelBuilder.SeedReviewData();
     }
 }

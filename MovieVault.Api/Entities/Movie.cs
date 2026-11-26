@@ -27,4 +27,7 @@ public class Movie
 
     // shows: 1:N
     public List<Screening> Screenings { get; set; } = new();
+
+    // reviews: 1:N - en film kan have 0..N anmeldelser
+    public List<Review> Reviews { get; set; } = new();
 }

@@ -530,6 +530,59 @@ namespace MovieVault.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MovieVault.Api.Entities.MediaOutlet", b =>
+                {
+                    b.Property<int>("MediaOutletId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MediaOutletId"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("OutletType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Website")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("MediaOutletId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("MediaOutlets");
+
+                    b.HasData(
+                        new
+                        {
+                            MediaOutletId = 1,
+                            Name = "The Morning Ledger",
+                            OutletType = "Newspaper",
+                            Website = "https://morningledger.example"
+                        },
+                        new
+                        {
+                            MediaOutletId = 2,
+                            Name = "Channel Nord",
+                            OutletType = "TvChannel",
+                            Website = "https://channelnord.example"
+                        },
+                        new
+                        {
+                            MediaOutletId = 3,
+                            Name = "Screenwise Magazine",
+                            OutletType = "Magazine",
+                            Website = "https://screenwise.example"
+                        });
+                });
+
             modelBuilder.Entity("MovieVault.Api.Entities.Movie", b =>
                 {
                     b.Property<int>("MovieId")
@@ -964,6 +1017,188 @@ namespace MovieVault.Api.Migrations
                             MovieId = 5,
                             ShootingEndDate = new DateOnly(2025, 9, 12),
                             ShootingStartDate = new DateOnly(2025, 3, 3)
+                        });
+                });
+
+            modelBuilder.Entity("MovieVault.Api.Entities.Review", b =>
+                {
+                    b.Property<int>("ReviewId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReviewId"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Headline")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("MediaOutletId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MovieId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("PublishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReviewerId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ReviewId");
+
+                    b.HasIndex("MediaOutletId");
+
+                    b.HasIndex("MovieId");
+
+                    b.HasIndex("ReviewerId");
+
+                    b.ToTable("Reviews", t =>
+                        {
+                            t.HasCheckConstraint("CK_Review_Rating", "[Rating] BETWEEN 1 AND 5");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            ReviewId = 1,
+                            Body = "The Last Lighthouse builds its tension slowly and never lets go. Mikkel Strand carries the film with a restrained, powerful lead performance.",
+                            Headline = "A quiet storm of a film",
+                            MediaOutletId = 1,
+                            MovieId = 1,
+                            PublishedAt = new DateTime(2026, 3, 13, 8, 0, 0, 0, DateTimeKind.Utc),
+                            Rating = 5,
+                            ReviewerId = 1
+                        },
+                        new
+                        {
+                            ReviewId = 2,
+                            Body = "Stunning coastal photography and a strong cast. The middle act drags, but the ending is worth the wait.",
+                            Headline = "Beautiful, if a little long",
+                            MediaOutletId = 2,
+                            MovieId = 1,
+                            PublishedAt = new DateTime(2026, 3, 14, 18, 30, 0, 0, DateTimeKind.Utc),
+                            Rating = 4,
+                            ReviewerId = 2
+                        },
+                        new
+                        {
+                            ReviewId = 3,
+                            Body = "Few films look this good, but the plot is thin. Worth seeing on a big screen for the visuals alone.",
+                            Headline = "Atmosphere over story",
+                            MediaOutletId = 3,
+                            MovieId = 1,
+                            PublishedAt = new DateTime(2026, 3, 20, 10, 0, 0, 0, DateTimeKind.Utc),
+                            Rating = 3,
+                            ReviewerId = 4
+                        },
+                        new
+                        {
+                            ReviewId = 4,
+                            Body = "Echoes of Neon is a feast for the eyes, but the mystery is easy to solve long before the detectives do.",
+                            Headline = "Style without much substance",
+                            MediaOutletId = 1,
+                            MovieId = 2,
+                            PublishedAt = new DateTime(2026, 5, 23, 7, 45, 0, 0, DateTimeKind.Utc),
+                            Rating = 3,
+                            ReviewerId = 1
+                        },
+                        new
+                        {
+                            ReviewId = 5,
+                            Body = "Glass Harbor is a confident small-town drama with an excellent ensemble and a script that trusts its audience.",
+                            Headline = "A harbour full of secrets",
+                            MediaOutletId = 1,
+                            MovieId = 3,
+                            PublishedAt = new DateTime(2026, 8, 8, 9, 15, 0, 0, DateTimeKind.Utc),
+                            Rating = 4,
+                            ReviewerId = 3
+                        },
+                        new
+                        {
+                            ReviewId = 6,
+                            Body = "Big ideas and a big budget, but Paper Satellites never decides what kind of film it wants to be.",
+                            Headline = "Lost in orbit",
+                            MediaOutletId = 2,
+                            MovieId = 5,
+                            PublishedAt = new DateTime(2026, 10, 3, 19, 0, 0, 0, DateTimeKind.Utc),
+                            Rating = 2,
+                            ReviewerId = 2
+                        },
+                        new
+                        {
+                            ReviewId = 7,
+                            Body = "Northbound is funny, touching and refreshingly short. A good choice for the whole family.",
+                            Headline = "A warm road movie",
+                            MediaOutletId = 1,
+                            MovieId = 4,
+                            PublishedAt = new DateTime(2026, 9, 19, 8, 0, 0, 0, DateTimeKind.Utc),
+                            Rating = 4,
+                            ReviewerId = 1
+                        });
+                });
+
+            modelBuilder.Entity("MovieVault.Api.Entities.Reviewer", b =>
+                {
+                    b.Property<int>("ReviewerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReviewerId"));
+
+                    b.Property<int>("MediaOutletId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("ReviewerId");
+
+                    b.HasIndex("MediaOutletId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("[UserId] IS NOT NULL");
+
+                    b.ToTable("Reviewers");
+
+                    b.HasData(
+                        new
+                        {
+                            ReviewerId = 1,
+                            MediaOutletId = 1,
+                            Name = "Rita Reel"
+                        },
+                        new
+                        {
+                            ReviewerId = 2,
+                            MediaOutletId = 2,
+                            Name = "Jonas Frame"
+                        },
+                        new
+                        {
+                            ReviewerId = 3,
+                            MediaOutletId = 1,
+                            Name = "Maja Lens"
+                        },
+                        new
+                        {
+                            ReviewerId = 4,
+                            MediaOutletId = 3,
+                            Name = "Peter Cutts"
                         });
                 });
 
@@ -1590,6 +1825,51 @@ namespace MovieVault.Api.Migrations
                     b.Navigation("Movie");
                 });
 
+            modelBuilder.Entity("MovieVault.Api.Entities.Review", b =>
+                {
+                    b.HasOne("MovieVault.Api.Entities.MediaOutlet", "MediaOutlet")
+                        .WithMany("Reviews")
+                        .HasForeignKey("MediaOutletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MovieVault.Api.Entities.Movie", "Movie")
+                        .WithMany("Reviews")
+                        .HasForeignKey("MovieId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MovieVault.Api.Entities.Reviewer", "Reviewer")
+                        .WithMany("Reviews")
+                        .HasForeignKey("ReviewerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("MediaOutlet");
+
+                    b.Navigation("Movie");
+
+                    b.Navigation("Reviewer");
+                });
+
+            modelBuilder.Entity("MovieVault.Api.Entities.Reviewer", b =>
+                {
+                    b.HasOne("MovieVault.Api.Entities.MediaOutlet", "MediaOutlet")
+                        .WithMany("Reviewers")
+                        .HasForeignKey("MediaOutletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MovieVault.Api.Auth.ApiUser", "User")
+                        .WithOne()
+                        .HasForeignKey("MovieVault.Api.Entities.Reviewer", "UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("MediaOutlet");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MovieVault.Api.Entities.Screen", b =>
                 {
                     b.HasOne("MovieVault.Api.Entities.Cinema", "Cinema")
@@ -1662,6 +1942,13 @@ namespace MovieVault.Api.Migrations
                     b.Navigation("Movies");
                 });
 
+            modelBuilder.Entity("MovieVault.Api.Entities.MediaOutlet", b =>
+                {
+                    b.Navigation("Reviewers");
+
+                    b.Navigation("Reviews");
+                });
+
             modelBuilder.Entity("MovieVault.Api.Entities.Movie", b =>
                 {
                     b.Navigation("Cast");
@@ -1669,6 +1956,8 @@ namespace MovieVault.Api.Migrations
                     b.Navigation("FilmingLocations");
 
                     b.Navigation("ProductionRecord");
+
+                    b.Navigation("Reviews");
 
                     b.Navigation("Screenings");
                 });
@@ -1678,6 +1967,11 @@ namespace MovieVault.Api.Migrations
                     b.Navigation("Movies");
 
                     b.Navigation("Studios");
+                });
+
+            modelBuilder.Entity("MovieVault.Api.Entities.Reviewer", b =>
+                {
+                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("MovieVault.Api.Entities.Screen", b =>

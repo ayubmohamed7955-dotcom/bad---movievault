@@ -42,11 +42,14 @@ public static class IdentitySeeder
         UserManager<ApiUser> userManager,
         IConfiguration configuration)
     {
+        // reviewer2.demo bruger samme password-konfiguration som reviewer.demo (DemoUsers:Reviewer:Password).
+        // To Reviewer-konti er nødvendige for at vise, at man ikke kan ændre andres anmeldelser.
         var demoUsers = new[]
         {
             new { UserName = "actor.demo", Role = "Actor" },
             new { UserName = "director.demo", Role = "Director" },
             new { UserName = "reviewer.demo", Role = "Reviewer" },
+            new { UserName = "reviewer2.demo", Role = "Reviewer" },
             new { UserName = "admin.demo", Role = "Admin" }
         };
 
@@ -131,6 +134,28 @@ public static async Task LinkDemoUsersAsync(
 
     // Forbind instruktøren med Identity-brugeren
     director.UserId = directorUser.Id;
+
+    // Forbind anmelderne med Identity-brugerne:
+    // reviewer.demo -> Rita Reel (ReviewerId = 1), reviewer2.demo -> Jonas Frame (ReviewerId = 2)
+    var reviewerLinks = new[]
+    {
+        new { UserName = "reviewer.demo", ReviewerId = 1 },
+        new { UserName = "reviewer2.demo", ReviewerId = 2 }
+    };
+
+    foreach (var link in reviewerLinks)
+    {
+        var reviewerUser = await userManager.FindByNameAsync(link.UserName);
+        var reviewer = await db.Reviewers.FindAsync(link.ReviewerId);
+
+        if (reviewerUser == null || reviewer == null)
+        {
+            throw new InvalidOperationException(
+                $"Demo Reviewer user {link.UserName} or Reviewer record {link.ReviewerId} was not found.");
+        }
+
+        reviewer.UserId = reviewerUser.Id;
+    }
 
     // Gem ændringerne i SQL Server
     await db.SaveChangesAsync();
